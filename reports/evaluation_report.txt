@@ -1,0 +1,19 @@
+Wine Quality Model Evaluation
+
+Accuracy:  0.4008
+F1-macro: 0.2709
+
+Confusion matrix (rows=true, cols=predicted):
+  labels: ['poor', 'normal', 'good']
+[[0, 28, 21], [0, 298, 697], [0, 33, 223]]
+
+Classification report:
+              precision    recall  f1-score   support
+
+        poor     0.0000    0.0000    0.0000        49
+      normal     0.8301    0.2995    0.4402       995
+        good     0.2370    0.8711    0.3726       256
+
+    accuracy                         0.4008      1300
+   macro avg     0.3557    0.3902    0.2709      1300
+weighted avg     0.6820    0.4008    0.4103      1300

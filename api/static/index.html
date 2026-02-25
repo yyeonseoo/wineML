@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>와인 품질 예측 | Wine Quality Predictor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c0b0f;
+      --bg-card: #141218;
+      --bg-card-hover: #1a1620;
+      --bg-input: #1c1822;
+      --border: #2d2638;
+      --border-light: #3d3548;
+      --text: #f0eef4;
+      --text-muted: #9b94a8;
+      --text-soft: #6b6378;
+      --accent: #c9a962;
+      --accent-bright: #e0c078;
+      --accent-dim: #9a8348;
+      --good: #6ee7a0;
+      --normal: #fcd34d;
+      --poor: #f47272;
+      --radius: 14px;
+      --radius-sm: 10px;
+      --shadow: 0 8px 32px rgba(0,0,0,0.4);
+      --gradient-hero: linear-gradient(165deg, #1a1522 0%, #0c0b0f 50%, #0f0d14 100%);
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      min-height: 100vh;
+      line-height: 1.55;
+      background-image: var(--gradient-hero);
+    }
+    .page { max-width: 960px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+
+    .hero {
+      text-align: center;
+      padding: 3rem 1rem 2.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .hero h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.25rem;
+      font-weight: 600;
+      margin: 0 0 0.6rem;
+      color: var(--accent-bright);
+      letter-spacing: 0.02em;
+    }
+    .hero .subtitle {
+      color: var(--text-muted);
+      font-size: 1rem;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow);
+    }
+    .card h2 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin: 0 0 1rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .example-section {
+      margin-bottom: 1.75rem;
+    }
+    .example-section .card-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .example-section .selected-badge {
+      font-size: 0.8rem;
+      color: var(--accent);
+      background: rgba(201, 169, 98, 0.12);
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      border: 1px solid rgba(201, 169, 98, 0.25);
+    }
+    .wine-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 0.6rem;
+    }
+    .wine-chip {
+      padding: 0.6rem 0.9rem;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      font-size: 0.8rem;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, transform 0.15s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .wine-chip:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-light);
+      transform: translateY(-1px);
+    }
+    .wine-chip.selected {
+      background: rgba(201, 169, 98, 0.15);
+      border-color: var(--accent-dim);
+      color: var(--accent-bright);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .field label { font-size: 0.85rem; font-weight: 500; color: var(--text); }
+    .field .desc { font-size: 0.72rem; color: var(--text-soft); line-height: 1.4; }
+    .field input[type="number"] {
+      padding: 0.65rem 0.8rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-input);
+      color: var(--text);
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .field input:hover { border-color: var(--border-light); }
+    .field input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(201, 169, 98, 0.18);
+    }
+
+    .actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-top: 1.25rem;
+    }
+    button {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 0.95rem;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: transform 0.15s, opacity 0.15s, box-shadow 0.2s;
+    }
+    button:hover { opacity: 0.95; }
+    button:active { transform: scale(0.98); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+      color: #1a1812;
+      box-shadow: 0 2px 12px rgba(201, 169, 98, 0.25);
+    }
+    .btn-primary:hover { box-shadow: 0 4px 16px rgba(201, 169, 98, 0.35); }
+    .btn-secondary {
+      background: var(--bg-input);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { border-color: var(--border-light); }
+
+    #result {
+      margin-top: 1rem;
+      padding: 1.5rem 1.75rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: none;
+      box-shadow: var(--shadow);
+    }
+    #result.visible { display: block; }
+    #result.poor { border-left: 4px solid var(--poor); }
+    #result.normal { border-left: 4px solid var(--normal); }
+    #result.good { border-left: 4px solid var(--good); }
+    #result .result-label { font-size: 1.2rem; font-weight: 600; margin-bottom: 0.5rem; }
+    #result.poor .result-label { color: var(--poor); }
+    #result.normal .result-label { color: var(--normal); }
+    #result.good .result-label { color: var(--good); }
+    #result .result-probs {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.25rem;
+    }
+    #result .result-probs span { white-space: nowrap; }
+    #result.error { border-left-color: var(--poor); }
+    #result.error .result-label { color: var(--poor); }
+
+    .footer-note {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-soft);
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero">
+      <h1>Wine Quality</h1>
+      <p class="subtitle">화학 성분 11가지를 입력하면 품질 등급(낮음 / 보통 / 높음)을 예측합니다.</p>
+    </header>
+
+    <section class="card example-section">
+      <div class="card-title-row">
+        <h2>예시 와인 선택</h2>
+        <span class="selected-badge" id="selectedBadge" style="display: none;">선택됨</span>
+      </div>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0 0 0.75rem;">아래에서 와인을 클릭하면 해당 성분 값이 폼에 채워집니다.</p>
+      <div class="wine-grid" id="wineGrid"></div>
+    </section>
+
+    <section class="card">
+      <h2>화학 성분 입력</h2>
+      <div class="grid" id="formGrid"></div>
+      <div class="actions">
+        <button class="btn-primary" id="btnPredict">예측하기</button>
+        <button class="btn-secondary" id="btnClear">초기화</button>
+      </div>
+    </section>
+
+    <div id="result"></div>
+    <p class="footer-note">UCI Wine Quality 데이터 기반 분류 모델 · 품질 구간: 낮음(0–4점) / 보통(5–6) / 높음(7–10)</p>
+  </div>
+
+  <script>
+    const FIELDS = [
+      { key: 'fixed_acidity', label: '고정산', desc: '비휘발성 산. 와인의 신맛·쓴맛과 관련.', min: 4, max: 16, step: 0.1 },
+      { key: 'volatile_acidity', label: '휘발산', desc: '초산 등. 너무 높으면 식초 냄새.', min: 0.1, max: 2, step: 0.01 },
+      { key: 'citric_acid', label: '구연산', desc: '산도·신선함을 더해 주는 성분.', min: 0, max: 1, step: 0.01 },
+      { key: 'residual_sugar', label: '잔류당', desc: '발효 후 남은 당. 당도와 관련.', min: 0.5, max: 70, step: 0.1 },
+      { key: 'chlorides', label: '염화물', desc: '소금기. 짠맛·미네랄감.', min: 0.01, max: 0.6, step: 0.001 },
+      { key: 'free_sulfur_dioxide', label: '유리 이산화황', desc: 'SO₂ 유리 형태. 산화 방지.', min: 1, max: 290, step: 1 },
+      { key: 'total_sulfur_dioxide', label: '총 이산화황', desc: '유리+결합 SO₂. 보존·산화 억제.', min: 6, max: 440, step: 1 },
+      { key: 'density', label: '밀도', desc: '당·알코올에 따른 비중.', min: 0.99, max: 1.04, step: 0.001 },
+      { key: 'ph', label: 'pH', desc: '산도 지표. 낮을수록 더 시다.', min: 2.7, max: 4, step: 0.01 },
+      { key: 'sulphates', label: '황산염', desc: '첨가제. 몸감·보존에 기여.', min: 0.2, max: 2, step: 0.01 },
+      { key: 'alcohol', label: '알코올', desc: '도수(%). 바디·단맛에 영향.', min: 8, max: 15, step: 0.1 },
+    ];
+
+    const sampleKeyToField = {
+      'fixed acidity': 'fixed_acidity', 'volatile acidity': 'volatile_acidity', 'citric acid': 'citric_acid',
+      'residual sugar': 'residual_sugar', 'chlorides': 'chlorides',
+      'free sulfur dioxide': 'free_sulfur_dioxide', 'total sulfur dioxide': 'total_sulfur_dioxide',
+      'density': 'density', 'pH': 'ph', 'sulphates': 'sulphates', 'alcohol': 'alcohol',
+    };
+
+    const classToLabel = { poor: '낮음', normal: '보통', good: '높음' };
+    const classToTheme = { poor: 'poor', normal: 'normal', good: 'good' };
+
+    let samples = [];
+
+    const grid = document.getElementById('formGrid');
+    FIELDS.forEach(({ key, label, desc, min, max, step }) => {
+      const div = document.createElement('div');
+      div.className = 'field';
+      div.innerHTML = `
+        <label for="${key}">${label}</label>
+        <span class="desc">${desc}</span>
+        <input type="number" id="${key}" name="${key}" min="${min}" max="${max}" step="${step}" value="${min}">
+      `;
+      grid.appendChild(div);
+    });
+
+    function getPayload() {
+      const payload = {};
+      FIELDS.forEach(({ key }) => {
+        const el = document.getElementById(key);
+        payload[key] = parseFloat(el.value, 10);
+      });
+      return payload;
+    }
+
+    function setForm(sample) {
+      FIELDS.forEach(({ key }) => {
+        const el = document.getElementById(key);
+        const rawKey = Object.keys(sampleKeyToField).find(k => sampleKeyToField[k] === key);
+        const val = sample[rawKey] ?? sample[key];
+        if (val != null) el.value = Number(val);
+      });
+    }
+
+    function clearForm() {
+      FIELDS.forEach(({ key, min }) => {
+        document.getElementById(key).value = min;
+      });
+      document.getElementById('selectedBadge').style.display = 'none';
+      document.querySelectorAll('.wine-chip.selected').forEach(el => el.classList.remove('selected'));
+    }
+
+    const resultEl = document.getElementById('result');
+    function showResult(html, theme = 'normal', isError = false) {
+      resultEl.innerHTML = html;
+      resultEl.className = 'visible ' + (isError ? 'error' : theme);
+    }
+
+    document.getElementById('btnPredict').addEventListener('click', async () => {
+      const payload = getPayload();
+      try {
+        const res = await fetch('/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error(await res.text() || res.statusText);
+        const data = await res.json();
+        const labelKr = classToLabel[data.class] || data.class;
+        const theme = classToTheme[data.class] || 'normal';
+        let html = `<div class="result-label">예측 품질 등급: ${labelKr}</div>`;
+        if (data.probabilities) {
+          html += '<div class="result-probs">' + Object.entries(data.probabilities)
+            .map(([k, v]) => `<span>${classToLabel[k] || k}: ${(v * 100).toFixed(1)}%</span>`)
+            .join('') + '</div>';
+        }
+        showResult(html, theme);
+      } catch (e) {
+        showResult(`<div class="result-label">오류</div><div>${e.message}</div>`, null, true);
+      }
+    });
+
+    document.getElementById('btnClear').addEventListener('click', () => { clearForm(); });
+
+    async function loadSamples() {
+      try {
+        const res = await fetch('/samples');
+        if (!res.ok) throw new Error(res.statusText);
+        samples = await res.json();
+        const wineGrid = document.getElementById('wineGrid');
+        wineGrid.innerHTML = '';
+        samples.forEach((s, idx) => {
+          const name = s.name || `예시 ${idx + 1}`;
+          const chip = document.createElement('button');
+          chip.type = 'button';
+          chip.className = 'wine-chip';
+          chip.textContent = name;
+          chip.title = name;
+          chip.addEventListener('click', () => {
+            document.querySelectorAll('.wine-chip').forEach(el => el.classList.remove('selected'));
+            chip.classList.add('selected');
+            const { name: _n, ...features } = s;
+            setForm(features);
+            const badge = document.getElementById('selectedBadge');
+            badge.textContent = '선택: ' + name;
+            badge.style.display = 'inline-block';
+          });
+          wineGrid.appendChild(chip);
+        });
+      } catch (e) {
+        document.getElementById('wineGrid').innerHTML = '<p style="color: var(--poor);">예시 목록을 불러올 수 없습니다.</p>';
+      }
+    }
+
+    loadSamples();
+  </script>
+</body>
+</html>

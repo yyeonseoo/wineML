@@ -284,7 +284,7 @@
     </section>
 
     <div id="result"></div>
-    <p class="footer-note">UCI Wine Quality 데이터 기반 평점 예측(회귀) · 0–10점 (Vivino 스타일 1–5 참고)</p>
+    <p class="footer-note">UCI Wine Quality 데이터 기반 평점 예측(회귀) · 0–10점</p>
   </div>
 
   <script>
@@ -367,7 +367,6 @@
         if (!res.ok) throw new Error(await res.text() || res.statusText);
         const data = await res.json();
         let html = `<div class="result-label">예측 평점: ${data.rating} / 10</div>`;
-        html += `<div class="result-probs"><span>Vivino 스타일: ${data.rating_1_5} / 5</span></div>`;
         showResult(html, 'normal');
       } catch (e) {
         showResult(`<div class="result-label">오류</div><div>${e.message}</div>`, null, true);

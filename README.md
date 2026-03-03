@@ -1,4 +1,4 @@
-# Wine Quality ML & Web
+# Wine Quality ML & Web (wineML)
 
 UCI Wine Quality 데이터셋(약 6,500건)으로 품질 등급(poor / normal / good) 예측 모델을 학습하고, FastAPI + 단일 페이지 웹으로 예측하는 프로젝트입니다.
 

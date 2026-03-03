@@ -29,15 +29,15 @@ SAMPLE_TO_API = {
 }
 
 
-def load_payload():
-    samples_path = MODELS_DIR / "samples.json"
+def load_payload(wine_type="red"):
+    samples_path = MODELS_DIR / wine_type / "samples.json"
     if not samples_path.exists():
         raise FileNotFoundError(f"{samples_path} not found")
     samples = json.loads(samples_path.read_text(encoding="utf-8"))
     if not samples:
         raise ValueError("samples.json is empty")
     raw = samples[0]
-    payload = {}
+    payload = {"wine_type": wine_type}
     for k, api_key in SAMPLE_TO_API.items():
         if k in raw:
             payload[api_key] = raw[k]
@@ -66,6 +66,13 @@ def main():
         default=100,
         help="Number of sequential requests (default: 100)",
     )
+    parser.add_argument(
+        "--type",
+        choices=("red", "white"),
+        default="red",
+        dest="wine_type",
+        help="Wine type for /predict (default: red)",
+    )
     args = parser.parse_args()
 
     try:
@@ -74,7 +81,7 @@ def main():
         print("Install requests: pip install requests")
         raise SystemExit(1)
 
-    payload = load_payload()
+    payload = load_payload(args.wine_type)
     url = args.url.rstrip("/") + "/predict"
     n = args.n
 
@@ -100,6 +107,7 @@ def main():
 
     print("=== API Benchmark (POST /predict) ===\n")
     print(f"URL:       {url}")
+    print(f"Wine type: {args.wine_type}")
     print(f"Requests:  {n} (success: {len(times_ms)}, errors: {errors})")
     if not times_ms:
         print("No successful requests. Check server and payload.")
@@ -118,6 +126,7 @@ def main():
 
     report = {
         "url": url,
+        "wine_type": args.wine_type,
         "n_requests": n,
         "n_success": len(times_ms),
         "n_errors": errors,

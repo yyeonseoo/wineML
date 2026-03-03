@@ -1,0 +1,5 @@
+Wine Quality Model Evaluation (white) [Regression]
+
+MSE:  0.3482
+MAE:  0.4195
+R²:   0.5504

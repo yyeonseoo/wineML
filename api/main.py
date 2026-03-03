@@ -1,12 +1,13 @@
 """
 Wine Quality Prediction API.
-Loads model and scaler from ../models/ and exposes POST /predict and GET /samples.
+Loads red/white models from ../models/red/ and ../models/white/.
+POST /predict with wine_type (red|white), GET /samples?type=red|white.
 """
 from pathlib import Path
 import json
 import joblib
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -22,24 +23,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load artifacts at startup
-model = None
-scaler = None
+# Per-type artifacts: red, white (regression: predict rating 0-10)
+models = {}      # "red" | "white" -> model
+scalers = {}     # "red" | "white" -> scaler
+samples = {}     # "red" | "white" -> list of sample dicts
 feature_order = None
-class_names = None
-samples_list = None
 
 
 def load_artifacts():
-    global model, scaler, feature_order, class_names, samples_list
-    model = joblib.load(MODELS_DIR / "model.joblib")
-    scaler = joblib.load(MODELS_DIR / "scaler.joblib")
-    with open(MODELS_DIR / "feature_order.json") as f:
-        feature_order = json.load(f)
-    with open(MODELS_DIR / "class_names.json") as f:
-        class_names = json.load(f)
-    with open(MODELS_DIR / "samples.json") as f:
-        samples_list = json.load(f)
+    global models, scalers, samples, feature_order
+    for wine_type in ("red", "white"):
+        d = MODELS_DIR / wine_type
+        if not d.exists():
+            continue
+        models[wine_type] = joblib.load(d / "model.joblib")
+        scalers[wine_type] = joblib.load(d / "scaler.joblib")
+        with open(d / "samples.json", encoding="utf-8") as f:
+            samples[wine_type] = json.load(f)
+    for wine_type in ("red", "white"):
+        d = MODELS_DIR / wine_type
+        if d.exists():
+            with open(d / "feature_order.json") as f:
+                feature_order = json.load(f)
+            break
 
 
 @app.on_event("startup")
@@ -47,7 +53,8 @@ def on_startup():
     load_artifacts()
 
 
-class WineFeatures(BaseModel):
+class PredictRequest(BaseModel):
+    wine_type: str  # "red" | "white"
     fixed_acidity: float
     volatile_acidity: float
     citric_acid: float
@@ -56,49 +63,57 @@ class WineFeatures(BaseModel):
     free_sulfur_dioxide: float
     total_sulfur_dioxide: float
     density: float
-    ph: float  # API uses 'ph' to avoid symbol
+    ph: float
     sulphates: float
     alcohol: float
 
     class Config:
-        # allow both 'ph' and 'pH' if we add alias
         extra = "forbid"
 
 
 @app.post("/predict")
-def predict(features: WineFeatures):
-    if model is None or scaler is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
-    # Build vector in same order as feature_order (DataFrame avoids sklearn name warning)
+def predict(req: PredictRequest):
+    wine_type = req.wine_type.lower()
+    if wine_type not in ("red", "white"):
+        raise HTTPException(status_code=400, detail="wine_type must be 'red' or 'white'")
+    if wine_type not in models or wine_type not in scalers:
+        raise HTTPException(status_code=503, detail=f"Model for '{wine_type}' not loaded")
+    model = models[wine_type]
+    scaler = scalers[wine_type]
     row = {
-        "fixed acidity": features.fixed_acidity,
-        "volatile acidity": features.volatile_acidity,
-        "citric acid": features.citric_acid,
-        "residual sugar": features.residual_sugar,
-        "chlorides": features.chlorides,
-        "free sulfur dioxide": features.free_sulfur_dioxide,
-        "total sulfur dioxide": features.total_sulfur_dioxide,
-        "density": features.density,
-        "pH": features.ph,
-        "sulphates": features.sulphates,
-        "alcohol": features.alcohol,
+        "fixed acidity": req.fixed_acidity,
+        "volatile acidity": req.volatile_acidity,
+        "citric acid": req.citric_acid,
+        "residual sugar": req.residual_sugar,
+        "chlorides": req.chlorides,
+        "free sulfur dioxide": req.free_sulfur_dioxide,
+        "total sulfur dioxide": req.total_sulfur_dioxide,
+        "density": req.density,
+        "pH": req.ph,
+        "sulphates": req.sulphates,
+        "alcohol": req.alcohol,
     }
     X = scaler.transform(pd.DataFrame([row], columns=feature_order))
-    pred_class = int(model.predict(X)[0])
-    label = class_names[pred_class]
-    out = {"class": label, "class_index": pred_class}
-    if hasattr(model, "predict_proba"):
-        probs = model.predict_proba(X)[0].tolist()
-        out["probabilities"] = {class_names[i]: probs[i] for i in range(len(class_names))}
-    return out
+    rating_10 = float(model.predict(X)[0])
+    # Vivino-style 1-5 scale: 0->1, 10->5
+    rating_1_5 = round(1 + (rating_10 / 10.0) * 4, 2)
+    return {
+        "wine_type": wine_type,
+        "rating": round(rating_10, 2),
+        "rating_1_5": rating_1_5,
+    }
 
 
 @app.get("/samples")
-def get_samples():
-    if samples_list is None:
+def get_samples(type: str | None = Query(None, description="red or white; omit for both")):
+    if not samples:
         raise HTTPException(status_code=503, detail="Samples not loaded")
-    # Return as-is (raw values). Frontend uses keys that match CSV: "fixed acidity" etc.
-    return samples_list
+    if type is None:
+        return samples.get("red", []) + samples.get("white", [])
+    t = type.lower()
+    if t not in ("red", "white"):
+        raise HTTPException(status_code=400, detail="type must be 'red' or 'white'")
+    return samples.get(t, [])
 
 
 @app.get("/feature_order")

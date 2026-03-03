@@ -127,6 +127,32 @@
       color: var(--accent-bright);
     }
 
+    .wine-type-tabs {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .wine-type-tab {
+      flex: 1;
+      padding: 0.75rem 1rem;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+    }
+    .wine-type-tab:hover {
+      border-color: var(--border-light);
+      color: var(--text);
+    }
+    .wine-type-tab.active {
+      background: rgba(201, 169, 98, 0.15);
+      border-color: var(--accent-dim);
+      color: var(--accent-bright);
+    }
+
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -228,8 +254,16 @@
   <div class="page">
     <header class="hero">
       <h1>Wine Quality</h1>
-      <p class="subtitle">화학 성분 11가지를 입력하면 품질 등급(낮음 / 보통 / 높음)을 예측합니다.</p>
+      <p class="subtitle">레드·화이트를 구분해 품질 평점(0–10)을 예측합니다.</p>
     </header>
+
+    <section class="card">
+      <h2>와인 종류</h2>
+      <div class="wine-type-tabs">
+        <button type="button" class="wine-type-tab active" data-type="red">레드 와인</button>
+        <button type="button" class="wine-type-tab" data-type="white">화이트 와인</button>
+      </div>
+    </section>
 
     <section class="card example-section">
       <div class="card-title-row">
@@ -250,7 +284,7 @@
     </section>
 
     <div id="result"></div>
-    <p class="footer-note">UCI Wine Quality 데이터 기반 분류 모델 · 품질 구간: 낮음(0–4점) / 보통(5–6) / 높음(7–10)</p>
+    <p class="footer-note">UCI Wine Quality 데이터 기반 평점 예측(회귀) · 0–10점 (Vivino 스타일 1–5 참고)</p>
   </div>
 
   <script>
@@ -275,10 +309,8 @@
       'density': 'density', 'pH': 'ph', 'sulphates': 'sulphates', 'alcohol': 'alcohol',
     };
 
-    const classToLabel = { poor: '낮음', normal: '보통', good: '높음' };
-    const classToTheme = { poor: 'poor', normal: 'normal', good: 'good' };
-
     let samples = [];
+    let currentWineType = 'red';
 
     const grid = document.getElementById('formGrid');
     FIELDS.forEach(({ key, label, desc, min, max, step }) => {
@@ -293,7 +325,7 @@
     });
 
     function getPayload() {
-      const payload = {};
+      const payload = { wine_type: currentWineType };
       FIELDS.forEach(({ key }) => {
         const el = document.getElementById(key);
         payload[key] = parseFloat(el.value, 10);
@@ -334,15 +366,9 @@
         });
         if (!res.ok) throw new Error(await res.text() || res.statusText);
         const data = await res.json();
-        const labelKr = classToLabel[data.class] || data.class;
-        const theme = classToTheme[data.class] || 'normal';
-        let html = `<div class="result-label">예측 품질 등급: ${labelKr}</div>`;
-        if (data.probabilities) {
-          html += '<div class="result-probs">' + Object.entries(data.probabilities)
-            .map(([k, v]) => `<span>${classToLabel[k] || k}: ${(v * 100).toFixed(1)}%</span>`)
-            .join('') + '</div>';
-        }
-        showResult(html, theme);
+        let html = `<div class="result-label">예측 평점: ${data.rating} / 10</div>`;
+        html += `<div class="result-probs"><span>Vivino 스타일: ${data.rating_1_5} / 5</span></div>`;
+        showResult(html, 'normal');
       } catch (e) {
         showResult(`<div class="result-label">오류</div><div>${e.message}</div>`, null, true);
       }
@@ -350,9 +376,18 @@
 
     document.getElementById('btnClear').addEventListener('click', () => { clearForm(); });
 
+    document.querySelectorAll('.wine-type-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        currentWineType = tab.dataset.type;
+        document.querySelectorAll('.wine-type-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        loadSamples();
+      });
+    });
+
     async function loadSamples() {
       try {
-        const res = await fetch('/samples');
+        const res = await fetch('/samples?type=' + currentWineType);
         if (!res.ok) throw new Error(res.statusText);
         samples = await res.json();
         const wineGrid = document.getElementById('wineGrid');
